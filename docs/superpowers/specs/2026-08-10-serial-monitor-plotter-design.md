@@ -1,6 +1,6 @@
 # Design: Serial Monitor and Serial Plotter
 
-Status: **implemented, hardware-verified (2026-08-10)**. See the "Implementation status" section at the top of [the implementation plan](../plans/2026-08-10-serial-monitor-plotter.md) for verification results, two bugs found and fixed during hardware testing, and the one item (send-box typing) left unverified due to an environment limitation.
+Status: **implemented, hardware-verified (2026-08-10 – 2026-08-11)**. See the "Implementation status" section at the top of [the implementation plan](../plans/2026-08-10-serial-monitor-plotter.md) for verification results, five bugs found and fixed during hardware testing, a worked Rust/C-boundary reference example (the PWM/ADC test sketch), and the one item (send-box delivery) left unverified.
 
 ## Motivation
 

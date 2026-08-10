@@ -8,23 +8,167 @@
 
 **Tech Stack:** Rust, GPUI (`Panel` trait, `cx.open_window`, `canvas()`/`PathBuilder` for the chart, `Editor::single_line` for text inputs, `uniform_list` for the scrolling log), `serialport` (already a workspace dependency), `futures::channel::mpsc` (thread-to-entity message passing, same shape `crates/terminal/src/terminal.rs` already uses).
 
-## Implementation status: done, hardware-verified (2026-08-10)
+## Implementation status: done, hardware-verified (2026-08-10 – 2026-08-11)
 
-All 8 tasks complete via subagent-driven-development on branch `serial-monitor-plotter` (branched from `main` after RFC-0001's board-detect/build/flash work merged). Commit range `054a0d5ff2..a0e2cc3242`. Per-task reviews found and fixed real issues in three tasks (a `connect()`/`close_port` reconnect-leak race and a non-guaranteed pause-for-flash release in Task 4; a silently-swallowed platform error in Task 5's `save_log`); the final whole-branch review (opus) found 2 Critical + 6 Important issues, all fixed in one fix wave and re-verified clean — see the SDD ledger's history for full detail before it's deleted (`.superpowers/sdd/2026-08-10-serial-monitor-plotter/progress.md`, gitignored scratch).
+All 8 tasks complete via subagent-driven-development on branch `serial-monitor-plotter` (branched from `main` after RFC-0001's board-detect/build/flash work merged). Commit range `054a0d5ff2..fe9620e9c5`. Per-task reviews found and fixed real issues in three tasks (a `connect()`/`close_port` reconnect-leak race and a non-guaranteed pause-for-flash release in Task 4; a silently-swallowed platform error in Task 5's `save_log`); the final whole-branch review (opus) found 2 Critical + 6 Important issues, all fixed in one fix wave and re-verified clean — see the SDD ledger's history for full detail before it's deleted (`.superpowers/sdd/2026-08-10-serial-monitor-plotter/progress.md`, gitignored scratch).
 
-**Task 8 (manual hardware verification)** on the ELEGOO UNO R3, using a hand-written PWM breathing-LED test sketch (`/home/gooya/test/`, outside this repo) wired with a single jumper from a PWM pin to an analog input pin — oversampling `analogRead` reconstructs the duty cycle without a filter capacitor, giving two correlated `pwm:`/`adc:` series for the Plotter to chart:
+A PR was opened against `Wanyaldee/citadel` (#3) after the review/hardware-verification pass below; five more real bugs surfaced from continued hardware use after the PR was up and were fixed as follow-up commits on the same branch/PR (see the numbered list below, items 3–5, plus the port-refill fix).
 
-- Board auto-detection, Monitor panel connect, live text log, Plotter window chart: all confirmed working.
+**Task 8 (manual hardware verification)** on the ELEGOO UNO R3, using a hand-written PWM breathing-LED test sketch (`/home/gooya/test/`, outside this repo — full source captured in "Reference: the PWM/ADC test sketch" below) wired with a single jumper from a PWM pin to an analog input pin — oversampling `analogRead` reconstructs the duty cycle without a filter capacitor, giving two correlated `pwm:`/`adc:` series for the Plotter to chart:
+
+- Board auto-detection, Monitor panel connect (after the port-refill fix below), live text log, Plotter window chart: all confirmed working.
 - Save Log (writes the buffered lines to a user-picked file): confirmed working.
 - Auto-disconnect-and-reconnect around Build and Upload (the Monitor releases the port before `avrdude` flashes, reconnects after): confirmed working.
-- Send-box typing: **not verified** — keyboard input into GPUI text fields didn't register under the user's WSLg/Wayland environment (WSLg's compositor is suspected to lack the `zwp_text_input_v3` protocol GPUI's Linux/Wayland backend uses for text commit); the suggested `WAYLAND_DISPLAY= cargo run -p zed` X11-backend workaround didn't resolve it either. This is an environment limitation, not a defect in `citadel_serial_monitor`'s `send()` path (which has no hardware-dependent logic beyond writing bytes to the open port) — deferred unverified, matching the precedent the board-detect/build/flash plan's own Task 10 set for an unavailable test condition (its ATmega328PB warning path).
+- Keyboard input into text fields (send box, editor) while the Plotter window was open: initially appeared not to work at all (see item 4 below) — resolved once the Plotter's window/parent relationship was fixed. Send-box typing itself (device actually receiving what's typed) is still not independently confirmed — no echo in the test sketch and the continuous `pwm:`/`adc:` telemetry stream makes it hard to visually spot a response — deferred as a UX/observability gap rather than a known defect, matching the precedent the board-detect/build/flash plan's own Task 10 set for an unavailable test condition (its ATmega328PB warning path).
 
-**Two real bugs found and fixed live during hardware testing**, outside the automated per-task/final review loop (hands-on debugging sessions with the human, not subagent dispatches):
+**Five real bugs found and fixed live during hardware testing**, outside the automated per-task/final review loop (hands-on debugging sessions with the human, not subagent dispatches):
 
 1. **UI-thread hang/crash from `close_port`'s synchronous mutex lock** (commit `e116c76235`). The final review's Critical #2 fix made `close_port` block-acquire the shared port handle's mutex inline, reasoning the reader thread only ever holds it for one bounded `port.read()` call. That's a floor, not a ceiling — `std::sync::Mutex` has no fairness guarantee, and the PWM test sketch's continuous (every-50ms, forever) serial output let the reader thread release-and-immediately-reacquire the lock in a tight loop, starving the foreground/UI thread's contending acquire for multiple seconds. The app's own Hang Report telemetry pinpointed this exactly (a foreground hang at `serial_connection.rs:249` with ~2.5s mean/~3.4s worst duration, immediately preceded by a ~16.6s background hang) — blocking the UI thread that long starved the Wayland event loop, which the compositor responded to by closing the connection (`Broken pipe`), crashing the app on quit. Fixed by moving the lock-and-clear back onto a `cx.background_spawn` task (this crate's original, pre-final-review design), keeping the `PortSlot` tri-state leak fix from Critical #2 but giving up the synchronous release guarantee in favor of `citadel_build`'s multi-second build/link pipeline elapsing before `avrdude` actually needs the port — the same timing this crate relied on before that guarantee was added, and evidently safer in practice than the guarantee's own UI-thread cost.
 2. **Serial Plotter window unmovable with no background** (commit `a0e2cc3242`). `SerialPlotterWindow` requested the default (server-side) window decorations and drew no titlebar of its own; most Wayland compositors (including the one in the user's environment) don't implement server-side xdg-decorations for a plain toplevel, leaving the window with nothing to drag — and no `.bg()`/`.text_color()` on the root element left the chart hard to read against whatever the compositor left behind. Fixed by requesting client decorations (matching this app's own `"window_decorations": "client"` default) and adding a small draggable title row using the same `window_control_area(Drag)` + mouse-down/move pattern `platform_title_bar.rs` already establishes, plus theming the background/text color the same way `crates/zed`'s `AboutWindow` does. A separately-reported "window flickers on and off" symptom did not recur after this fix and was not independently root-caused.
+3. **Serial Plotter window could not be closed at all** (commit `bd53aefff2`). A direct consequence of fix #2: switching to client decorations means the compositor draws no close button either, and the window never had one of its own. Fixed by adding an `IconName::Close` `IconButton` to the title row calling `window.remove_window()` — the same mechanism `crates/zed`'s `AboutWindow` uses via its `Cancel` action. (A child element inside a `window_control_area(Drag)` region still receives its own clicks normally, confirmed against `platform_title_bar.rs`'s own window-control buttons, which sit inside the same kind of region.)
+4. **Keyboard input elsewhere (send box, editor) stopped working while the Plotter was open** (commit `f1b74f77f7`). `WindowKind::Floating` (used by the Plotter, matching the `AboutWindow` precedent it was modeled on) establishes a parent/transient-for relationship with whichever window was active when it opened (Wayland: `toplevel.set_parent`; X11: `WM_TRANSIENT_FOR`) — appropriate for a short-lived dialog, but the Plotter is a persistent utility window meant to stay open for a whole session. The user confirmed keyboard input elsewhere started working again once the (now-closable, per fix #3) Plotter was closed, consistent with that parent relationship causing incorrect keyboard-focus routing under their environment (observed under WSLg). Fixed by switching to `WindowKind::Normal` — the same kind the main workspace window itself uses — which establishes no such relationship.
+5. **Monitor panel's port field started blank and never filled in, even after a board was detected** (commit `fe9620e9c5`). `SerialMonitorPanel` reads `default_port_name(cx)` exactly once, at construction time — but the panel is built at workspace startup, typically before `citadel_build`'s async chip-signature read has identified the connected board, so the port field is very likely still blank at that moment with no mechanism to update it later. The Plotter window doesn't hit this because it's opened on demand, well after detection has usually finished — which is why the user could connect from the Plotter but got "Enter a Port name first" from the Monitor. Fixed by subscribing to `GlobalBoardMonitor` and refilling the port field once detection catches up, but only while the user hasn't already typed a port of their own into it.
 
-Both fixes are worth a lightweight look if/when this branch goes through PR review, since they bypassed the SDD task-reviewer/final-reviewer loop. Not merged to `main` as of this writing — work sits on branch `serial-monitor-plotter`.
+All five are worth a lightweight look if/when this branch goes through PR review, since they bypassed the SDD task-reviewer/final-reviewer loop. PR: `Wanyaldee/citadel#3`. Not merged to `main` as of this writing — work sits on branch `serial-monitor-plotter`.
+
+### Reference: the PWM/ADC test sketch
+
+Used throughout Task 8's hardware verification (source lives in `/home/gooya/test/`, a `citadel_new_project`-scaffolded project outside this repo, not tracked here). Captured below because it's a clean worked example of the Rust/C boundary this repo's `CLAUDE.md` mandates for every sketch: `cpp/io.cpp` performs nothing but direct pin/serial I/O hand-off (no `if`/`for`/`while`, no computed intermediates), and every decision — the breathing-LED triangle wave, the oversampled ADC averaging, decimal-ASCII formatting for the Plotter's `label:value` line format — lives in the `no_std` Rust crate.
+
+**Wiring:** a single jumper wire from digital pin 9 (PWM) to `A0` (analog in) — no breadboard, no resistor. `analogRead()` alone can't resolve a ~490Hz PWM signal, but averaging many back-to-back reads per tick (each ~100µs, far faster than the PWM period) approximates the duty cycle by oversampling, giving two correlated series (`pwm:`, `adc:`) for the Serial Plotter to chart side by side.
+
+`cpp/io.cpp`:
+
+```cpp
+#include <Arduino.h>
+
+const int PWM_PIN = 9;
+const int ADC_PIN = A0;
+const long BAUD_RATE = 9600;
+
+extern "C" void citadel_tick(void); // all logic + serial output lives in Rust
+
+extern "C" void io_set_pwm(uint8_t value) {
+    analogWrite(PWM_PIN, value);
+}
+
+extern "C" uint16_t io_read_adc(void) {
+    return analogRead(ADC_PIN);
+}
+
+extern "C" void io_serial_write_byte(uint8_t value) {
+    Serial.write(value);
+}
+
+void setup() {
+    pinMode(PWM_PIN, OUTPUT);
+    Serial.begin(BAUD_RATE);
+}
+
+void loop() {
+    citadel_tick();
+    delay(50); // core-provided delay; no branch, no computed intermediate
+}
+```
+
+`rust/src/lib.rs`:
+
+```rust
+#![no_std]
+
+use core::panic::PanicInfo;
+
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {}
+}
+
+extern "C" {
+    fn io_set_pwm(value: u8);
+    fn io_read_adc() -> u16;
+    fn io_serial_write_byte(value: u8);
+}
+
+// A single jumper wire from PWM_PIN (cpp/io.cpp) to ADC_PIN carries the
+// signal back in -- analogRead() alone can't resolve a ~490Hz PWM output,
+// but averaging many back-to-back reads (each ~100us, far faster than the
+// PWM period) over one tick approximates the duty cycle by oversampling.
+const ADC_SAMPLE_COUNT: u16 = 32;
+
+const DUTY_STEP: i16 = 4;
+const DUTY_MAX: i16 = 255;
+const DUTY_MIN: i16 = 0;
+
+static mut DUTY: i16 = 0;
+static mut DIRECTION: i16 = DUTY_STEP;
+
+fn write_byte(value: u8) {
+    unsafe { io_serial_write_byte(value) }
+}
+
+fn write_bytes(bytes: &[u8]) {
+    for &value in bytes {
+        write_byte(value);
+    }
+}
+
+fn write_u16_decimal(mut value: u16) {
+    let mut digits = [0u8; 5];
+    let mut count = 0;
+    loop {
+        digits[count] = b'0' + (value % 10) as u8;
+        value /= 10;
+        count += 1;
+        if value == 0 {
+            break;
+        }
+    }
+    while count > 0 {
+        count -= 1;
+        write_byte(digits[count]);
+    }
+}
+
+fn average_adc_reading() -> u16 {
+    let mut total: u32 = 0;
+    for _ in 0..ADC_SAMPLE_COUNT {
+        total += unsafe { io_read_adc() } as u32;
+    }
+    (total / ADC_SAMPLE_COUNT as u32) as u16
+}
+
+fn next_breathing_duty(duty: i16, direction: i16) -> (i16, i16) {
+    let stepped = duty + direction;
+    if stepped >= DUTY_MAX {
+        (DUTY_MAX, -DUTY_STEP)
+    } else if stepped <= DUTY_MIN {
+        (DUTY_MIN, DUTY_STEP)
+    } else {
+        (stepped, direction)
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn citadel_tick() {
+    let duty = unsafe {
+        let (next_duty, next_direction) = next_breathing_duty(DUTY, DIRECTION);
+        DUTY = next_duty;
+        DIRECTION = next_direction;
+        DUTY
+    };
+
+    unsafe { io_set_pwm(duty as u8) };
+    let adc_average = average_adc_reading();
+
+    write_bytes(b"pwm:");
+    write_u16_decimal(duty as u16);
+    write_bytes(b",adc:");
+    write_u16_decimal(adc_average);
+    write_byte(b'\n');
+}
+```
+
+Output line shape: `pwm:<0-255>,adc:<0-1023>\n`, matching `plot_parser.rs`'s `label:value` convention exactly — the Plotter draws `pwm` and `adc` as two separate series without any special-casing.
 
 ## Global Constraints
 
