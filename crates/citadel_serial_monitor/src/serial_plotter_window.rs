@@ -220,6 +220,7 @@ impl Render for SerialPlotterWindow {
                     .h(px(32.))
                     .px_2()
                     .items_center()
+                    .justify_between()
                     .bg(cx.theme().colors().title_bar_background)
                     .on_mouse_down_out(cx.listener(|this, _, _window, _cx| {
                         this.should_move = false;
@@ -242,7 +243,17 @@ impl Render for SerialPlotterWindow {
                             window.start_window_move();
                         }
                     }))
-                    .child(Label::new("Serial Plotter")),
+                    .child(Label::new("Serial Plotter"))
+                    // Client decorations mean the compositor draws no close
+                    // button of its own -- this is the only way to close
+                    // this window. A child inside a window_control_area(Drag)
+                    // region still receives its own clicks normally (see
+                    // platform_title_bar.rs's own window-control buttons,
+                    // which sit inside the same kind of region).
+                    .child(
+                        IconButton::new("close-serial-plotter", IconName::Close)
+                            .on_click(cx.listener(|_, _, window, _cx| window.remove_window())),
+                    ),
             )
             .child(
                 h_flex()
