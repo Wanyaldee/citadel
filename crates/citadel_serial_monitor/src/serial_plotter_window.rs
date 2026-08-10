@@ -319,7 +319,18 @@ pub fn open_serial_plotter_window(_window: &mut Window, cx: &mut App) {
             window_bounds: Some(WindowBounds::centered(window_size, cx)),
             is_resizable: true,
             is_minimizable: true,
-            kind: WindowKind::Floating,
+            // Not WindowKind::Floating: on both the Wayland and X11 gpui_linux
+            // backends, Floating/Dialog windows get a parent/transient-for
+            // relationship to whichever window was active when they opened
+            // (Wayland: toplevel.set_parent; X11: WM_TRANSIENT_FOR). That's
+            // right for a short-lived dialog like AboutWindow, but this is a
+            // persistent utility window meant to stay open for the length of
+            // a session alongside the editor -- and under some compositors
+            // (observed under WSLg) that parent relationship appears to make
+            // keyboard input elsewhere stop working while this window is
+            // open. WindowKind::Normal is what the main workspace window
+            // itself uses, with no such relationship.
+            kind: WindowKind::Normal,
             // Requesting server decorations (the default) leaves the window
             // completely undecorated -- and thus unmovable, since we never
             // implemented our own drag handling either -- on Wayland
