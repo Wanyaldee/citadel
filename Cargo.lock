@@ -3115,6 +3115,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "citadel_serial_monitor"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "citadel_build",
+ "editor",
+ "futures 0.3.32",
+ "gpui",
+ "notifications",
+ "serialport",
+ "ui",
+ "util",
+ "workspace",
+]
+
+[[package]]
 name = "clang-sys"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -23402,6 +23418,7 @@ dependencies = [
  "chrono",
  "citadel_build",
  "citadel_new_project",
+ "citadel_serial_monitor",
  "clap",
  "cli",
  "client",
