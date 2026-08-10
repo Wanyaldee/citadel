@@ -115,6 +115,33 @@ impl SerialMonitorPanel {
             });
 
             let mut subscriptions = Vec::new();
+            // The panel is constructed at workspace startup, typically
+            // before board_detect's async signature-read identifies a
+            // connected board -- default_port_name(cx) above is very likely
+            // still None at this point, leaving the port field blank with
+            // no later chance to fill in (unlike the Plotter window, opened
+            // on demand well after detection has usually finished). Refill
+            // it once detection catches up, but only while the user hasn't
+            // already typed something of their own into it.
+            if let Some(monitor) = cx.try_global::<citadel_build::board_detect::GlobalBoardMonitor>() {
+                let board_monitor = monitor.0.clone();
+                let port_editor_to_refill = port_editor.clone();
+                subscriptions.push(cx.observe_in(
+                    &board_monitor,
+                    window,
+                    move |_this, _monitor, window, cx| {
+                        let already_has_port =
+                            !port_editor_to_refill.read(cx).text(cx).trim().is_empty();
+                        if already_has_port {
+                            return;
+                        }
+                        if let Some(port_name) = default_port_name(cx) {
+                            port_editor_to_refill
+                                .update(cx, |editor, cx| editor.set_text(port_name, window, cx));
+                        }
+                    },
+                ));
+            }
             subscriptions.push(cx.subscribe(
                 &connection,
                 |this: &mut Self, connection, _event: &SerialLineReceived, cx| {
