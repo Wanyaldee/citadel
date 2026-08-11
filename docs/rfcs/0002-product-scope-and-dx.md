@@ -29,7 +29,7 @@ Out of scope for now, listed so it stays a decision rather than an omission:
 
 ## Project scaffolding
 
-`citadel init` (and the IDE's "new project" flow — same code path) produces a project that is ready to build and ready to commit, with no follow-up setup:
+`citadel init` (and the IDE's "new project" flow — same code path) produces a project that is ready to build and ready to commit, with no follow-up setup: it writes the scaffold below, runs `git init` + the initial commit, and then runs `rustup toolchain install <pinned nightly> --component rust-src` for the scaffolded `rust-toolchain.toml`'s channel. That last step exists because rustup's own lazy-fetch-on-first-build is not a reliable substitute — a local toolchain/component install can be incomplete or corrupted (observed on Windows: `rustup component list` reported `rust-src` as "installed" while the sysroot's `library/Cargo.lock` was actually missing) and silently defers the failure to the first Build and Upload, where it surfaces as an opaque `E0152 duplicate lang item` instead of a toolchain-setup error. Installing eagerly at `init` time trades a few extra seconds of wait for catching that failure at the point where it's actually diagnosable.
 
 ```
 my-citadel-project/
