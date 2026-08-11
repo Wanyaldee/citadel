@@ -91,11 +91,8 @@ can be stored in each opt-in case.
 
 - [Telemetry](../telemetry.md): What telemetry Zed collects and how to control
   it.
-- [Privacy for Business](../business/privacy.md): How Zed Business enforces
-  privacy settings across an organization.
-- [Admin Controls](../business/admin-controls.md): How owners and admins control
-  Zed-hosted models, Edit Prediction, and feedback sharing.
 - [AI Quick Start](./quick-start.md#turn-ai-off): How to turn AI off.
-- [Privacy Policy](https://zed.dev/privacy-policy): Zed's privacy policy.
+
+Citadel does not offer hosted organizations, so upstream Zed's admin controls and org-wide privacy settings for Business accounts do not apply.
 - [Subprocessors](https://zed.dev/subprocessors): Zed's subprocessors.
 - [Terms of Service](https://zed.dev/terms): Zed's terms.

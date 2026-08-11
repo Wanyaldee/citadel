@@ -35,7 +35,7 @@ For details on billing and payment, see [Individual Billing](./billing.md).
 
 Zed Business gives members with a paid Business seat access to all of Zed's hosted AI models, unlimited Edit Predictions, plus org-wide controls for administrators: which AI features are available, what data leaves your organization, and how AI spend is tracked. Paid seats and AI usage are consolidated into a single invoice.
 
-For a full feature overview, see [Zed Business](../business/overview.md). For billing details, see [Billing](./billing.md#organization).
+For billing details, see [Billing](./billing.md#organization). Citadel does not offer a hosted Business plan of its own; this section describes upstream Zed's offering.
 
 ### Student Plan {#student}
 

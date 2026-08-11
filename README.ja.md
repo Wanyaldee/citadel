@@ -8,7 +8,7 @@
 
 **Citadel**（別名 *Citadel-Duino*）は [Zed](https://github.com/zed-industries/zed) のフォークで、Arduino（AVR）向け組み込み開発に特化した次世代IDEとして開発中です。
 
-> 本プロジェクトは独立した非営利のフォークです。Zed Industries, Inc. とは提携・後援関係にありません。「Zed」はZed Industries, Inc. の商標です。
+> 本プロジェクトは独立した非営利のフォークです。Zed Industries, Inc. とは提携・後援関係にありません。「Zed」はZed Industries, Inc. の商標です。ライセンスと出典の詳細は [legal/NOTICE.md](./legal/NOTICE.md) を参照してください。
 
 ### Philosophy
 

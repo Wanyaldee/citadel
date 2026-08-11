@@ -139,11 +139,10 @@ resulting model available at
 
 ## Business Controls {#business-controls}
 
-On Zed Business, data sharing is off by default and controlled by organization
-administrators. Administrators can prevent members from submitting agent thread
-feedback or opting into Edit Prediction training data collection. See
-[Privacy for Business](../business/privacy.md) and
-[Admin Controls](../business/admin-controls.md#data-sharing).
+Upstream Zed's hosted Business accounts turn data sharing off by default and let
+organization administrators prevent members from submitting agent thread
+feedback or opting into Edit Prediction training data collection. Citadel does
+not offer hosted organizations, so these controls do not apply here.
 
 ## Applicable Terms {#applicable-terms}
 
