@@ -306,6 +306,9 @@ impl BoardMonitor {
 /// intel-hex output.
 async fn read_chip_signature(port_name: &str) -> anyhow::Result<[u8; 3]> {
     let mut command = new_command("avrdude");
+    if let Some(conf_path) = crate::build_pipeline::locate_avrdude_conf() {
+        command.args(["-C", &conf_path.display().to_string()]);
+    }
     command.args([
         "-c",
         "arduino",
