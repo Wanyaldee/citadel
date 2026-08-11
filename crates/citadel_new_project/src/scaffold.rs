@@ -6,6 +6,15 @@ use std::path::PathBuf;
 // name (handled with a plain `format!` in `rust_cargo_toml`), and the file
 // set is small and fixed. Reach for RustEmbed + Handlebars if this grows
 // per-project template variation.
+
+/// The nightly channel every scaffolded project's `rust-toolchain.toml`
+/// pins, matching `citadel_build`'s pipeline. Exposed so `new_project.rs`
+/// can `rustup toolchain install` this exact channel right after
+/// scaffolding, instead of leaving rustup's lazy fetch as the first time
+/// the toolchain/`rust-src` is touched (a partial or corrupted local
+/// install then only surfaces as a confusing error mid Build-and-Upload).
+pub const RUST_TOOLCHAIN_CHANNEL: &str = "nightly-2026-08-06";
+
 #[allow(dead_code)]
 const RUST_TOOLCHAIN_TOML: &str = r#"[toolchain]
 channel = "nightly-2026-08-06"
@@ -193,6 +202,16 @@ mod tests {
             .unwrap();
         assert!(content.contains("name = \"my_project_logic\""));
         assert!(content.contains("crate-type = [\"staticlib\"]"));
+    }
+
+    #[test]
+    fn rust_toolchain_toml_matches_rust_toolchain_channel_const() {
+        let files = scaffold_files("my-project");
+        let (_, content) = files
+            .iter()
+            .find(|(p, _)| p == &PathBuf::from("rust-toolchain.toml"))
+            .unwrap();
+        assert!(content.contains(&format!("channel = \"{RUST_TOOLCHAIN_CHANNEL}\"")));
     }
 
     #[test]

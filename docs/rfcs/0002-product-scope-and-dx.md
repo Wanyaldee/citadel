@@ -29,7 +29,7 @@ Out of scope for now, listed so it stays a decision rather than an omission:
 
 ## Project scaffolding
 
-`citadel init` (and the IDE's "new project" flow — same code path) produces a project that is ready to build and ready to commit, with no follow-up setup:
+`citadel init` (and the IDE's "new project" flow — same code path) produces a project that is ready to build and ready to commit, with no follow-up setup: it writes the scaffold below, runs `git init` + the initial commit, and then runs `rustup toolchain install <pinned nightly> --component rust-src` for the scaffolded `rust-toolchain.toml`'s channel. That last step exists because rustup's own lazy-fetch-on-first-build is not a reliable substitute — a local toolchain/component install can be incomplete or corrupted (observed on Windows: `rustup component list` reported `rust-src` as "installed" while the sysroot's `library/Cargo.lock` was actually missing) and silently defers the failure to the first Build and Upload, where it surfaces as an opaque `E0152 duplicate lang item` instead of a toolchain-setup error. Installing eagerly at `init` time trades a few extra seconds of wait for catching that failure at the point where it's actually diagnosable.
 
 ```
 my-citadel-project/
@@ -56,6 +56,8 @@ Choosing a part number from a dropdown before writing any code (the Microchip St
 
 - **Open:** the signature only identifies the chip, not the board. ATmega328P is Uno, Nano, and Pro Mini, which differ in clock and bootloader baud. Needs a decision on how to resolve that ambiguity — probe the bootloader, ask once and remember per USB VID/PID, or default to Uno.
 - **Open:** interaction with the pinned Rust nightly (RFC 0001 §1) — detection can select a target the pinned toolchain wasn't smoke-tested against.
+
+**Future direction, not yet scheduled: installer should provision the whole dev environment, not just the AVR toolchain.** Today, `avr-gcc`/`avr-g++`/`avr-ar`/`avr-objcopy`/`avrdude` (plus general prerequisites: `cargo`/rustup, CMake, Git) are assumed already present on `PATH` (see `crates/citadel_build/src/build_pipeline.rs`'s `check_toolchain_available`) — verified 2026-08-11 by hand on a clean Windows machine, which had none of them and needed each installed one at a time (`winget install AVRDudes.AVRDUDE`, `winget install ZakKemble.avr-gcc`, `winget install Kitware.CMake`, plus a Visual Studio "Spectre-mitigated libs" component for the `wasmtime-c-api-impl` build dependency). Fine for a developer building Citadel from source, not for an end-user installer. When a packaged Citadel installer is built, it should provision this whole set rather than surfacing `check_toolchain_available`'s "missing binaries" toast to a non-developer — and since GitHub integration and coding-AI-CLI integration (Claude Code, Codex, etc.) are both planned (this RFC's "Git and GitHub integration" section below; coding-AI integration not yet its own RFC), the same installer flow is also the natural place to set those up: authenticate GitHub, and detect/install/configure whichever coding-AI CLIs the user wants wired into Citadel. No decision yet on packaging mechanism (bundle binaries directly vs. shell out to winget/brew/apt at first run vs. a bootstrapper) or on which pieces are mandatory vs. opt-in during setup — recorded here so the combined requirement isn't lost before installer work is scoped.
 
 ## Git and GitHub integration
 

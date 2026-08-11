@@ -62,6 +62,31 @@ async fn write_scaffold(fs: Arc<dyn Fs>, destination: &Path) -> anyhow::Result<(
     Ok(())
 }
 
+/// Installs the scaffold's pinned nightly toolchain and its `rust-src`
+/// component up front, so a corrupted or incomplete local rustup install
+/// (rustup reports the component "installed" from stale manifest state
+/// while the actual sysroot files are missing) surfaces here as a clear
+/// error instead of as a confusing `E0152 duplicate lang item` mid
+/// Build-and-Upload.
+async fn ensure_rust_toolchain_installed() -> anyhow::Result<()> {
+    let status = new_command("rustup")
+        .args([
+            "toolchain",
+            "install",
+            scaffold::RUST_TOOLCHAIN_CHANNEL,
+            "--component",
+            "rust-src",
+        ])
+        .status()
+        .await?;
+    anyhow::ensure!(
+        status.success(),
+        "rustup toolchain install failed for {}",
+        scaffold::RUST_TOOLCHAIN_CHANNEL
+    );
+    Ok(())
+}
+
 /// Not covered by this module's unit tests: `fs` here is `FakeFs` in tests,
 /// but the `git add`/`git commit` calls below always shell out to the real
 /// `git` binary via `new_command`, so a `FakeFs`-backed test would need a
@@ -139,6 +164,15 @@ pub fn new_project(workspace: WeakEntity<Workspace>, window: &mut Window, cx: &m
             }
 
             if let Err(error) = git_init_and_commit(fs.clone(), &destination).await {
+                workspace
+                    .update(cx, |workspace, cx| {
+                        show_error_toast_in_workspace(workspace, &error, cx);
+                    })
+                    .ok()?;
+                return None;
+            }
+
+            if let Err(error) = ensure_rust_toolchain_installed().await {
                 workspace
                     .update(cx, |workspace, cx| {
                         show_error_toast_in_workspace(workspace, &error, cx);

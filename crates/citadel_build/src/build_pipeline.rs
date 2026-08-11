@@ -257,14 +257,22 @@ pub fn objcopy_args(elf_path: &Path, hex_path: &Path) -> CommandSpec {
 
 /// Arguments for flashing the hex file to the device.
 /// Matches brief spec: `-c <programmer> -p <mmcu> -P <port> -b <baud> -U flash:w:<hex>:i`
+/// `conf_path`, when given, is passed as `-C <path>` ahead of everything
+/// else — see `locate_avrdude_conf` for why this is needed on Windows.
 pub fn avrdude_flash_args(
     programmer: &str,
     mcu: &str,
     port: &str,
     baud: u32,
     hex_path: &Path,
+    conf_path: Option<&Path>,
 ) -> CommandSpec {
-    let args = vec![
+    let mut args = Vec::new();
+    if let Some(conf_path) = conf_path {
+        args.push("-C".to_string());
+        args.push(conf_path.display().to_string());
+    }
+    args.extend([
         "-c".to_string(),
         programmer.to_string(),
         "-p".to_string(),
@@ -275,7 +283,7 @@ pub fn avrdude_flash_args(
         baud.to_string(),
         "-U".to_string(),
         format!("flash:w:{}:i", hex_path.display()),
-    ];
+    ]);
 
     CommandSpec {
         program: "avrdude",
@@ -283,6 +291,23 @@ pub fn avrdude_flash_args(
         current_dir: None,
         env: HashMap::new(),
     }
+}
+
+/// Resolves the `avrdude.conf` that sits next to the real `avrdude` binary
+/// on `PATH`, following symlinks to get there.
+///
+/// On Windows, package managers can put `avrdude` on `PATH` as a symlink
+/// into a *different* package's directory than the one holding the
+/// matching `avrdude.conf` (e.g. an avr-gcc bundle's `avrdude.exe` next to
+/// a stray, mismatched-version conf from another package). avrdude's own
+/// conf auto-discovery then silently loads zero programmer definitions, so
+/// `-c arduino` fails with "cannot find programmer id arduino". Passing
+/// `-C` with the sibling conf's path sidesteps that auto-discovery.
+pub fn locate_avrdude_conf() -> Option<PathBuf> {
+    let exe = which::which("avrdude").ok()?;
+    let exe = std::fs::canonicalize(exe).ok()?;
+    let conf = exe.parent()?.join("avrdude.conf");
+    conf.exists().then_some(conf)
 }
 
 /// Parse `[package] name` from a Cargo.toml string.
@@ -550,6 +575,7 @@ pub async fn build_and_flash(target: BuildTarget) -> Result<PathBuf, BuildError>
         &target.port_name,
         target.avrdude_baud,
         &firmware_hex,
+        locate_avrdude_conf().as_deref(),
     );
     run(BuildStep::Flash, &flash_spec).await?;
 
@@ -820,12 +846,43 @@ mod tests {
             "/dev/ttyUSB0",
             115200,
             Path::new("build/firmware.hex"),
+            None,
         );
 
         assert_eq!(spec.program, "avrdude");
         assert_eq!(
             spec.args,
             vec![
+                "-c".to_string(),
+                "arduino".to_string(),
+                "-p".to_string(),
+                "atmega328p".to_string(),
+                "-P".to_string(),
+                "/dev/ttyUSB0".to_string(),
+                "-b".to_string(),
+                "115200".to_string(),
+                "-U".to_string(),
+                "flash:w:build/firmware.hex:i".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_avrdude_flash_args_with_conf_path() {
+        let spec = avrdude_flash_args(
+            "arduino",
+            "atmega328p",
+            "/dev/ttyUSB0",
+            115200,
+            Path::new("build/firmware.hex"),
+            Some(Path::new("/opt/avr/avrdude.conf")),
+        );
+
+        assert_eq!(
+            spec.args,
+            vec![
+                "-C".to_string(),
+                "/opt/avr/avrdude.conf".to_string(),
                 "-c".to_string(),
                 "arduino".to_string(),
                 "-p".to_string(),
