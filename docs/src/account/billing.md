@@ -46,13 +46,13 @@ If you require historical Stripe invoices, email [billing-support@zed.dev](mailt
 
 ## Organization billing {#organization}
 
-Zed Business consolidates your team's costs. Paid Business seats and member AI usage appear on one bill, with no separate invoices per member. For a full feature overview, see [Zed Business](../business/overview.md).
+Zed Business consolidates your team's costs. Paid Business seats and member AI usage appear on one bill, with no separate invoices per member. Citadel does not offer a hosted Business plan of its own; this section describes upstream Zed's offering.
 
 ### Billing dashboard {#dashboard}
 
 Owners, admins, and Billing Managers can access billing information at [dashboard.zed.dev](https://dashboard.zed.dev). The dashboard shows the current plan and links to update billing details, tax ID information, and payment information. You can also access invoice history through the Orb billing portal.
 
-Use the Billing Manager role for someone who needs billing access but does not need a paid Business seat. Billing Managers can view subscription usage, update billing details and payment methods, and access invoice history. They cannot manage members, change organization settings, cancel the subscription, or use Zed-hosted AI models and Edit Predictions through the Business subscription. For the full permissions list, see [Roles](../roles.md#role-billing-manager).
+Use the Billing Manager role for someone who needs billing access but does not need a paid Business seat. Billing Managers can view subscription usage, update billing details and payment methods, and access invoice history. They cannot manage members, change organization settings, cancel the subscription, or use Zed-hosted AI models and Edit Predictions through the Business subscription.
 
 ### AI usage {#ai-usage}
 

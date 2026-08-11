@@ -66,7 +66,7 @@ For details on AI request paths and opt-in data sharing, see [AI Privacy](./ai/p
 
 ## Zed Business
 
-Administrators on Zed Business can enforce a no-sharing policy org-wide; members can't opt into [Edit Prediction training data sharing](./ai/ai-improvement.md#edit-predictions) or [AI feedback ratings](./ai/ai-improvement.md#ai-feedback-with-ratings). See [Data Sharing](./business/admin-controls.md#data-sharing) in Admin Controls.
+Upstream Zed lets organization administrators enforce a no-sharing policy org-wide, preventing members from opting into [Edit Prediction training data sharing](./ai/ai-improvement.md#edit-predictions) or [AI feedback ratings](./ai/ai-improvement.md#ai-feedback-with-ratings). Citadel does not offer hosted organizations or admin controls.
 
 <!-- TODO: link to telemetry org-wide disable control once it ships (currently planned for a future release) -->
 
