@@ -29,6 +29,8 @@ Write all commit messages, code comments, PR descriptions/discussion, and docume
 
 This also applies to anything the IDE itself says to the user: diagnostics, error messages, log output, UI strings. Zed and Microchip Studio are both English-first, and so is Citadel — don't add localized user-facing strings. (The boundary-lint prototype's Japanese diagnostic messages predate this rule and should be translated to English as part of any further work on it.)
 
+Maybe if Citadel ever gets big enough to justify it, we'll revisit localization someday — but that's a "someday" problem, not a "now" problem.
+
 ## Sending changes
 
 Open a pull request against `main`. Please:
