@@ -4,7 +4,7 @@ This file governs automated documentation updates triggered by code changes. All
 
 ## Documentation System
 
-This documentation uses **mdBook** (https://rust-lang.github.io/mdBook/).
+This documentation uses **mdBook** (https://rust-lang.github.io/mdBook/). See [docs/README.md](./README.md) for the current build/preview setup and deployment status (GitHub Pages, planned — not yet live).
 
 ### Key Files
 
@@ -36,10 +36,10 @@ Example:
 
 ### Custom Preprocessor
 
-The docs use a custom preprocessor (`docs_preprocessor`) that expands special commands:
+The docs use a custom preprocessor (`docs_preprocessor`, inherited from upstream Zed) that expands special commands:
 
 | Syntax                      | Purpose                               | Example                       |
-| --------------------------- | ------------------------------------- | ----------------------------- |
+| --------------------------- | ------------------------------------- | ------------------------------ |
 | {#kb action::ActionName}    | Keybinding for action                 | {#kb agent::ToggleFocus}      |
 | {#action agent::ActionName} | Action reference (renders as command) | {#action agent::OpenSettings} |
 
@@ -47,7 +47,7 @@ The docs use a custom preprocessor (`docs_preprocessor`) that expands special co
 
 - Always use preprocessor syntax for keybindings instead of hardcoding
 - Action names use `snake_case` in the namespace, `PascalCase` for the action
-- Common namespaces: `agent::`, `editor::`, `assistant::`, `vim::`
+- Common namespaces: `agent::`, `editor::`, `assistant::`, `vim::`, and Citadel-specific ones like `citadel_serial_monitor::`
 
 ### Formatting Requirements
 
@@ -71,14 +71,14 @@ Use `{#anchor-id}` syntax for linkable section headers:
 ```markdown
 ## Getting Started {#getting-started}
 
-### Custom Models {#anthropic-custom-models}
+### Custom Boards {#serial-monitor-custom-boards}
 ```
 
 Anchor IDs should be:
 
 - Lowercase with hyphens
 - Unique within the page
-- Descriptive (can include parent context like `anthropic-custom-models`)
+- Descriptive (can include parent context like `serial-monitor-custom-boards`)
 
 ### Code Block Annotations
 
@@ -114,27 +114,28 @@ Use bold labels for callouts:
 
 ### Image References
 
-Images are hosted externally. Reference format:
+Citadel does not have a hosted asset domain like `zed.dev/img`. Until one exists, upload images to GitHub's asset storage (e.g. by dragging into an issue/PR draft) and reference the resulting URL:
 
 ```markdown
-![Alt text description](https://zed.dev/img/path/to/image.webp)
+![Alt text description](https://github.com/user-attachments/assets/...)
 ```
 
 ### Cross-Linking
 
-- Relative links for same-directory: `[Agent Panel](./agent-panel.md)`
-- With anchors: `[Custom Models](./llm-providers.md#anthropic-custom-models)`
+- Relative links for same-directory: `[Serial Monitor](./serial-monitor.md)`
+- With anchors: `[Custom Boards](./serial-monitor.md#serial-monitor-custom-boards)`
 - Parent directory: `[Telemetry](../telemetry.md)`
 
 ## Voice and Tone
 
 ### Core Principles
 
-- **Practical over promotional**: Focus on what users can do, not on selling Zed. Avoid marketing language like "powerful," "revolutionary," or "best-in-class."
-- **Honest about limitations**: When Zed lacks a feature or doesn't match another tool's depth, say so directly. Pair limitations with workarounds or alternative workflows.
+- **Practical over promotional**: Focus on what users can do, not on selling Citadel. Avoid marketing language like "powerful," "revolutionary," or "best-in-class."
+- **Honest about limitations**: Citadel is an early-stage fork (see [README.md](../README.md#status)) — say so directly where a feature is incomplete or unverified on real hardware. Pair limitations with workarounds or alternative workflows.
 - **Direct and concise**: Use short sentences. Get to the point. Developers are scanning, not reading novels.
 - **Second person**: Address the reader as "you." Avoid "the user" or "one."
-- **Present tense**: "Zed opens the file" not "Zed will open the file."
+- **Present tense**: "Citadel opens the file" not "Citadel will open the file."
+- **Hardware-aware**: When documenting anything that touches real hardware (serial ports, flashing, boards), state the assumptions explicitly (board type, cable, driver) rather than assuming a working setup.
 
 ### What to Avoid
 
@@ -149,34 +150,29 @@ Images are hosted externally. Reference format:
 ### Good: Direct and actionable
 
 ```
-To format on save, open the Settings Editor (`Cmd+,`) and search for `format_on_save`. Set it to `on`.
-
-Or add this to your settings.json:
-{
-  "format_on_save": "on"
-}
+To flash your sketch, connect the board over USB and press the flash button in the toolbar. Citadel detects the port automatically; if it doesn't, select it manually from the port dropdown.
 ```
 
 ### Bad: Wordy and promotional
 
 ```
-Zed provides a powerful and seamless formatting experience. Simply navigate to the settings and you'll find the format_on_save option which enables Zed's incredible auto-formatting capabilities.
+Citadel provides a powerful and seamless flashing experience. Simply connect your board and you'll find the incredible auto-detection feature handles everything for you.
 ```
 
 ### Good: Honest about limitations
 
 ```
-Zed doesn't index your project like IntelliJ does. You open a folder and start working immediately—no waiting. The trade-off: cross-project analysis relies on language servers, which may not go as deep.
+Citadel's Rust/C boundary checker only recognizes `if`/`for`/`while`/ternary constructs in C/C++ sketch code today. More exotic control-flow macros may slip through undetected.
 
 **How to adapt:**
-- Use `Cmd+Shift+F` for project-wide text search
-- Use `Cmd+O` for symbol search (powered by your language server)
+- Keep sketch-side code to the documented shape (see [README.md](../README.md#architecture-the-rustc-boundary))
+- Report anything that slips through as a bug
 ```
 
 ### Bad: Defensive or dismissive
 
 ```
-While some users might miss indexing, Zed's approach is actually better because it's faster.
+While some users might want stricter checking, Citadel's approach is actually fine because most sketches are simple anyway.
 ```
 
 ## Scope
@@ -186,15 +182,16 @@ While some users might miss indexing, Zed's approach is actually better because 
 - All Markdown files in `docs/src/`
 - `docs/src/SUMMARY.md` (mdBook table of contents)
 - Language-specific docs in `docs/src/languages/`
-- Feature docs (AI, extensions, configuration, etc.)
+- Feature docs (embedded/Arduino workflow, AI, extensions, configuration, etc.)
 
 ### Out-of-Scope (Do Not Modify)
 
-- `CHANGELOG.md`, `CONTRIBUTING.md`, `README.md` at repo root
+- `CHANGELOG.md` at repo root
 - Inline code comments and rustdoc
-- `CLAUDE.md`, `GEMINI.md`, or other AI instruction files
 - Build configuration (`book.toml`, theme files, `docs_preprocessor`)
 - Any file outside `docs/src/`
+
+Note: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `README.md`, `docs/README.md`, `docs/AGENTS.md`, and AI instruction files (`CLAUDE.md`, `AGENTS.md`, etc.) at repo root are **not** automatically out of scope — they are maintained deliberately and reviewed by hand, same as any other doc. This automation agent should not touch them as part of routine code-triggered doc updates, but a human explicitly asking for a rewrite of one of these files is not bound by this file's restriction.
 
 ## Page Structure Patterns
 
@@ -240,7 +237,7 @@ For each provider or distinct feature:
 
 ## Style Rules
 
-Inherit all conventions from `docs/.rules`. Key points:
+Inherit all conventions from `docs/.rules` where present. Key points:
 
 ### Voice
 
@@ -251,26 +248,28 @@ Inherit all conventions from `docs/.rules`. Key points:
 ### Formatting
 
 - Keybindings: backticks with `+` for simultaneous keys (`Cmd+Shift+P`)
-- Show both macOS and Linux/Windows variants when they differ
+- Show both macOS and Linux/Windows variants when they differ (Windows matters more for Citadel than for upstream Zed, given the Arduino IDE audience)
 - Use `sh` code blocks for terminal commands
 - Settings: show Settings Editor UI first, JSON as secondary
 
 ### Terminology
 
 | Use             | Instead of                                                            |
-| --------------- | --------------------------------------------------------------------- |
+| --------------- | ---------------------------------------------------------------------- |
 | folder          | directory                                                             |
 | project         | workspace                                                             |
 | Settings Editor | settings UI                                                           |
 | command palette | command bar                                                           |
 | panel           | tool window, sidebar (be specific: "Project Panel," "Terminal Panel") |
 | language server | LSP (spell out first use, then LSP is fine)                           |
+| board           | device, target (be specific about the Arduino/AVR board when possible) |
+| sketch          | firmware source, program (match Arduino's own terminology)             |
 
-## Zed-Specific Conventions
+## Citadel-Specific Conventions
 
 ### Recognized Rules Files
 
-When documenting rules/instructions for AI, note that Zed recognizes these files (in priority order):
+When documenting rules/instructions for AI, note that Citadel (inherited from Zed) recognizes these files (in priority order):
 
 - `.rules`
 - `.cursorrules`
@@ -293,6 +292,8 @@ When documenting rules/instructions for AI, note that Zed recognizes these files
 - macOS: `~/.config/zed/keymap.json`
 - Linux: `~/.config/zed/keymap.json`
 - Windows: `%AppData%\Zed\keymap.json`
+
+> **Note:** these config paths still say `zed` because Citadel hasn't renamed its own config directory yet. Update this section if/when that changes.
 
 ## Safety Constraints
 
@@ -375,7 +376,7 @@ Brief description of code changes analyzed.
 ### Changes Made
 
 | File           | Change            | Related Code      |
-| -------------- | ----------------- | ----------------- |
+| -------------- | ----------------- | ------------------ |
 | path/to/doc.md | Brief description | link to PR/commit |
 
 ### Rationale
