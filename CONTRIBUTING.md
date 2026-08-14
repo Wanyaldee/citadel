@@ -27,6 +27,8 @@ A Citadel Discord server is planned; once it's up, it will be an additional plac
 
 Write all commit messages, code comments, PR descriptions/discussion, and documentation in **English**, even if you're more comfortable in another language. This keeps the project's history and docs consistent and readable for every contributor, maintainer included (see the [Code of Conduct](./CODE_OF_CONDUCT.md) — nobody here is a native speaker either). If English isn't your first language, a machine-translated draft is fine; just make sure it reads clearly.
 
+This also applies to anything the IDE itself says to the user: diagnostics, error messages, log output, UI strings. Zed and Microchip Studio are both English-first, and so is Citadel — don't add localized user-facing strings. (The boundary-lint prototype's Japanese diagnostic messages predate this rule and should be translated to English as part of any further work on it.)
+
 ## Sending changes
 
 Open a pull request against `main`. Please:
