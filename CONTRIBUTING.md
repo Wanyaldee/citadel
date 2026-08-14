@@ -23,6 +23,10 @@ If you're proposing a larger feature (especially anything touching the Rust/C bo
 
 A Citadel Discord server is planned; once it's up, it will be an additional place to discuss ideas and proposals informally before writing them up as a GitHub discussion or issue. The link will be added here when it's live.
 
+## Language
+
+Write all commit messages, code comments, PR descriptions/discussion, and documentation in **English**, even if you're more comfortable in another language. This keeps the project's history and docs consistent and readable for every contributor, maintainer included (see the [Code of Conduct](./CODE_OF_CONDUCT.md) — nobody here is a native speaker either). If English isn't your first language, a machine-translated draft is fine; just make sure it reads clearly.
+
 ## Sending changes
 
 Open a pull request against `main`. Please:

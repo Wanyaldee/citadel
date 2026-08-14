@@ -126,6 +126,10 @@ Citadel does not have a hosted asset domain like `zed.dev/img`. Until one exists
 - With anchors: `[Custom Boards](./serial-monitor.md#serial-monitor-custom-boards)`
 - Parent directory: `[Telemetry](../telemetry.md)`
 
+## Language
+
+All documentation content must be written in **English**, matching the rest of the project (see [CONTRIBUTING.md](../CONTRIBUTING.md#language)). Do not generate or accept translated copies of docs pages unless a localization system is explicitly set up for it.
+
 ## Voice and Tone
 
 ### Core Principles
