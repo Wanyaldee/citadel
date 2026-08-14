@@ -1,18 +1,20 @@
-# プロトタイプ拡張: 本物のArduinoコアを使ったhello-blink
+# Prototype extension: hello-blink with the real Arduino core
 
-[`prototypes/0001-hello-blink`](../0001-hello-blink) は `avr/io.h` のレジスタ直叩きでRust/CのABI境界を検証した(RFC 0001 §5、resolved済み)。このプロトタイプは、本物の `ArduinoCore-avr`(`Arduino.h`/`pinMode`/`digitalWrite`)を使っても同じ境界ルールが成立することを検証する、独立した検証タスク。
+*[日本語](./README.ja.md)*
 
-## 構成
+[`prototypes/0001-hello-blink`](../0001-hello-blink) verified the Rust/C ABI boundary using direct `avr/io.h` register access (RFC 0001 §5, resolved). This prototype is an independent verification task: does the same boundary rule still hold when using the real `ArduinoCore-avr` (`Arduino.h`/`pinMode`/`digitalWrite`)?
 
-- `vendor/ArduinoCore-avr/` — [arduino/ArduinoCore-avr](https://github.com/arduino/ArduinoCore-avr) をgit submoduleとしてタグ `1.8.8` に固定。`cores/arduino/`(コア本体)と `variants/standard/`(Uno/Nano/Pro Mini系のピン配置)を使用。
-- `cpp/sketch.cpp` — ユーザースケッチ相当。`setup()`/`loop()` は `pinMode`/`digitalWrite`/`delay` の直線呼び出しのみで、if/for/whileや計算用の中間変数を持たない。
-- `rust/` — ロジック層。`#![no_std]` staticlib。`citadel_tick()` がLED状態(0/1)をトグルする。0001と違い、点滅のタイミングはRust側のカウンタではなく `sketch.cpp` の `delay(500)` が担う。
-- `build.sh` — `cores/arduino/` 配下の全ソースをコンパイル(`arduino-builder`と同じ方式)→ スケッチをコンパイル → `cargo` でRustをビルド(nightlyの固定は `rust-toolchain.toml` による)→ リンク(`-Wl,--gc-sections` で未使用コアシンボルを刈る)→ `.hex` 生成、を一括実行する。
-- 境界ルール(Rust/Cの分担)が適用されるのはCitadelが生成するコードとユーザーが書くコード(ここでは `cpp/sketch.cpp`)であり、ベンダリングした `ArduinoCore-avr` 自体の内部実装(`digitalWrite`/`delay`など)は対象外(libcの内部にルールが及ばないのと同様)。
+## Layout
 
-## 実機での検証結果
+- `vendor/ArduinoCore-avr/` — [arduino/ArduinoCore-avr](https://github.com/arduino/ArduinoCore-avr) pinned as a git submodule at tag `1.8.8`. Uses `cores/arduino/` (the core itself) and `variants/standard/` (pin mapping for the Uno/Nano/Pro Mini family).
+- `cpp/sketch.cpp` — stands in for a user sketch. `setup()`/`loop()` do nothing but straight-line calls to `pinMode`/`digitalWrite`/`delay` — no `if`/`for`/`while`, no computed intermediate variables.
+- `rust/` — the logic layer. A `#![no_std]` staticlib. `citadel_tick()` toggles the LED state (0/1). Unlike 0001, blink timing is driven by `sketch.cpp`'s `delay(500)`, not a counter on the Rust side.
+- `build.sh` — runs the whole pipeline: compile everything under `cores/arduino/` (the same way `arduino-builder` does) → compile the sketch → build the Rust side with `cargo` (nightly pinned via `rust-toolchain.toml`) → link (pruning unused core symbols with `-Wl,--gc-sections`) → generate `.hex`.
+- The boundary rule (splitting work between Rust and C) applies to code Citadel generates and code the user writes (here, `cpp/sketch.cpp`) — it does not apply to the internals of the vendored `ArduinoCore-avr` itself (`digitalWrite`/`delay`, etc.), the same way the rule doesn't reach into libc's internals.
 
-ELEGOO UNO R3(Arduino Uno互換ボード)で実機検証済み。
+## Verified on real hardware
+
+Verified on an ELEGOO UNO R3 (Arduino Uno-compatible board).
 
 ```sh
 git submodule update --init vendor/ArduinoCore-avr
@@ -20,12 +22,12 @@ git submodule update --init vendor/ArduinoCore-avr
 avrdude -c arduino -p atmega328p -P /dev/ttyACM0 -b 115200 -U flash:w:build/firmware.hex:i
 ```
 
-- `avrdude` による書き込み・ベリファイ成功
-- 13番ピン(オンボードLED)の点滅を目視確認済み
-- `avr-size` 実測値: text=1056 bytes(0001のtext=274 bytesとの差分がArduinoコア分のコスト。以前はコアオブジェクトを直接リンクしていたため`--gc-sections`が未使用コード[例: `HardwareSerial0.cpp`のISR/グローバルコンストラクタ]を刈れずtext=2376 bytesだった。`core.a`にアーカイブしてからリンクする方式に修正し、この値まで縮小した)
+- `avrdude` write + verify succeeded
+- Visually confirmed the onboard LED (pin 13) blinking
+- `avr-size` measurement: text=1056 bytes (the difference from 0001's text=274 bytes is the cost of the Arduino core. Earlier, when core objects were linked in directly, `--gc-sections` couldn't prune unused code — e.g. the ISR/global constructors in `HardwareSerial0.cpp` — leaving text=2376 bytes. Switching to archiving into `core.a` before linking got it down to this value.)
 
-`-P` はシリアルポートに合わせて変更する。
+Adjust `-P` to match your serial port.
 
-## ライセンスについて
+## A note on licensing
 
-`ArduinoCore-avr` はLGPL-2.1。Arduino公式のFAQによれば、スケッチ+コアをリンクした成果物はLGPLの再配布義務を負わない。Citadel本体のGPL/Apacheライセンス表記([トップレベルREADME](../../README.md#licensing)参照)とは別枠の注記。
+`ArduinoCore-avr` is LGPL-2.1. Per Arduino's official FAQ, an artifact that links a sketch with the core is not subject to LGPL's redistribution obligations. This is a separate note from Citadel's own GPL/Apache licensing (see the [top-level README](../../README.md#licensing)).

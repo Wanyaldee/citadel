@@ -1,38 +1,40 @@
-# RFC 0001 プロトタイプ: hello-blink
+# RFC 0001 Prototype: hello-blink
 
-[RFC 0001](../../docs/rfcs/0001-hybrid-architecture.md) の未解決項目のうち、Rust/Cハイブリッドアーキテクチャが実際にビルド・リンクできるかを検証する最小プロトタイプ。ATmega328P(Arduino Uno/Nano/Pro Mini相当)向け。
+*[日本語](./README.ja.md)*
 
-## 構成
+A minimal prototype that verifies one of the open items in [RFC 0001](../../docs/rfcs/0001-hybrid-architecture.md): whether the Rust/C hybrid architecture can actually build and link. Targets the ATmega328P (Arduino Uno/Nano/Pro Mini class boards).
 
-- `rust/` — ロジック層。`#![no_std]` staticlib。`citadel_tick()` がLED点滅の状態(0/1)を計算する。分岐・状態はすべてここにある。
-- `cpp/io.cpp` — I/O層(ユーザースケッチに相当)。`citadel_setup()`/`citadel_loop()` は直線的なレジスタ読み書きのみで、if/for/whileや計算用の中間変数を持たない。`citadel_tick()` の戻り値をそのままポートに書き込むだけ。
-- `cpp/runtime.cpp` — `main()` を所有する側(実運用ではArduinoコアのwiring.cに相当)。`citadel_setup()` を一度呼び、`citadel_loop()` を無限に呼ぶだけのランタイム。制御フローが必要なのはこの層であり、ユーザースケッチ(`io.cpp`)ではない。
-- `build.sh` — `avr-g++` でのコンパイル → `cargo +nightly` でのRustビルド → リンク → `avr-objcopy` での `.hex` 生成 → `avr-size`/`avr-nm` による検証、を一括実行する。
+## Layout
 
-## このプロトタイプが実証したこと(ホスト上でのビルドのみ)
+- `rust/` — the logic layer. A `#![no_std]` staticlib. `citadel_tick()` computes the LED-blink state (0/1). All branching and state live here.
+- `cpp/io.cpp` — the I/O layer (stands in for a user sketch). `citadel_setup()`/`citadel_loop()` do nothing but straight-line register reads/writes — no `if`/`for`/`while`, no computed intermediate variables. It just writes `citadel_tick()`'s return value straight to the port.
+- `cpp/runtime.cpp` — owns `main()` (in a real build, this role is played by the Arduino core's `wiring.c`). A runtime that calls `citadel_setup()` once and `citadel_loop()` forever. Control flow belongs here, not in the user sketch (`io.cpp`).
+- `build.sh` — runs the whole pipeline: compile with `avr-g++` → build the Rust side with `cargo +nightly` → link → generate `.hex` with `avr-objcopy` → verify with `avr-size`/`avr-nm`.
 
-`./build.sh` を実行すると:
-- `avr-g++` でコンパイルしたオブジェクトと `rustc`(LLVM)でコンパイルした `libcitadel_logic.a` が1つの `.elf` にリンクできる(RFC 0001 §5: ABI/リンク相互運用性)
-- `avr-nm` で `citadel_setup`/`citadel_loop`/`citadel_tick` が全て解決され、未定義参照(`U`)がゼロであることを確認できる
-- `avr-objcopy` で `.hex` が生成できる(RFC 0001 §2)
-- 固定した nightly(`rust-toolchain.toml` 参照)でのビルドが再現できる(RFC 0001 §1)
-- `avr-size` の実測値(text 274 bytes、ATmega328Pの32KB中 約0.8%)が得られる(RFC 0001 §3 の参考データ点 — このプロトタイプ自体は最小限のプログラムなので、「代表的なスケッチ」での再測定は別途必要)
+## What this prototype proved (host-side build only)
 
-## 実機での検証結果
+Running `./build.sh` shows:
+- An object compiled with `avr-g++` and `libcitadel_logic.a` compiled with `rustc` (LLVM) link into a single `.elf` (RFC 0001 §5: ABI/link interoperability)
+- `avr-nm` resolves `citadel_setup`/`citadel_loop`/`citadel_tick` with zero undefined references (`U`)
+- `avr-objcopy` produces a `.hex` (RFC 0001 §2)
+- The build reproduces with a pinned nightly (see `rust-toolchain.toml`) (RFC 0001 §1)
+- `avr-size` measurements (274 bytes of text, about 0.8% of the ATmega328P's 32KB) give a data point for RFC 0001 §3 — this prototype itself is a minimal program, so re-measuring with a "representative sketch" is a separate task
 
-ELEGOO UNO R3(Arduino Uno互換ボード)で実機検証済み。RFC 0001 §5の「実機にフラッシュして検証」はクローズ。
+## Verified on real hardware
+
+Verified on an ELEGOO UNO R3 (Arduino Uno-compatible board). This closes the "flash and verify on real hardware" item from RFC 0001 §5.
 
 ```sh
 ./build.sh
 avrdude -c arduino -p atmega328p -P /dev/ttyACM0 -b 115200 -U flash:w:build/firmware.hex:i
 ```
 
-- `avrdude` による書き込み・ベリファイ成功(274 bytes、差分なし)
-- 13番ピン(オンボードLED, PB5)の点滅を目視確認済み
+- `avrdude` write + verify succeeded (274 bytes, no diff)
+- Visually confirmed the onboard LED (pin 13, PB5) blinking
 
-`-P` はシリアルポートに合わせて変更する。
+Adjust `-P` to match your serial port.
 
-## このプロトタイプが実証していないこと
+## What this prototype did not prove
 
-- 本物のArduinoコア(`Arduino.h`/`pinMode`/`digitalWrite`)は[`prototypes/0002-arduino-core`](../0002-arduino-core)で別途検証済み。このプロトタイプ自体は意図的に`avr/io.h`直叩きのまま(ABI境界の最小検証に集中するため)。
-- C/C++の静的解析によるロジック拒否(RFC 0001 §4)はこのプロトタイプの対象外。
+- Using the real Arduino core (`Arduino.h`/`pinMode`/`digitalWrite`) is verified separately in [`prototypes/0002-arduino-core`](../0002-arduino-core). This prototype intentionally sticks to direct `avr/io.h` register access, to keep the ABI-boundary verification minimal and focused.
+- Static-analysis logic rejection for C/C++ (RFC 0001 §4) is out of scope for this prototype.
