@@ -1,29 +1,29 @@
-# Citadel ロードマップ
+# Citadel Roadmap
 
-## 完了済み
+## Done
 
-- シリアルモニタの実装
-- シリアルプロッタの実装
-- Windowsでの動作対応
-- `Citadel init` の改善
+- Serial monitor implementation
+- Serial plotter implementation
+- Windows support
+- `Citadel init` improvements
 
-## 今後の方針
+## Next up
 
-### 1. デバッグモードの実装
-- [ ] 要件定義・設計方針の検討
-- [ ] 実装
-- [ ] 検証
+### 1. Debug mode
+- [ ] Define requirements and design approach
+- [ ] Implement
+- [ ] Verify
 
-### 2. Git & GitHub連携
-- [ ] 要件定義・設計方針の検討
-- [ ] 実装
-- [ ] 検証
+### 2. Git & GitHub integration
+- [ ] Define requirements and design approach
+- [ ] Implement
+- [ ] Verify
 
-### 3. コーディングAI連携（Claude Code, Codex等）
-- [ ] 要件定義・設計方針の検討
-- [ ] 実装
-- [ ] 検証
+### 3. Coding AI integration (Claude Code, Codex, etc.)
+- [ ] Define requirements and design approach
+- [ ] Implement
+- [ ] Verify
 
-## 保留（優先度低）
+## Backlog (low priority)
 
-- パッケージの追加など
+- Additional package support, etc.
